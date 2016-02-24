@@ -51,52 +51,281 @@
                 pos = self.useOffsetForPos ? $element.offset() : $element.position();
             return $.extend({}, pos, {width: $element[0].offsetWidth, height: $element[0].offsetHeight});
         },
-        refreshPosition: function () {
-            var self = this, $dialog = self.$element, placement = self.options.placement,
-                actualWidth = $dialog[0].offsetWidth, actualHeight = $dialog[0].offsetHeight,
-                position, pos = self.getPosition();
+        getPlacement: function(pos){
+          var placement = this.options.placement,
+              de = document.documentElement,
+              db = document.body,
+              clientWidth = de.clientWidth,
+              clientHeight = de.clientHeight,
+              scrollTop = Math.max(db.scrollTop, de.scrollTop),
+              scrollLeft = Math.max(db.scrollLeft, de.scrollLeft),
+              pageX = Math.max(0, pos.left - scrollLeft),
+              pageY = Math.max(0, pos.top - scrollTop);
+
+          var isH = placement === 'horizontal';
+          var isV = placement === 'vertical';
+          var detect = placement === 'auto' || isH || isV;
+
+          if (detect) {
+              if (pageX < clientWidth / 3) {
+                  if (pageY < clientHeight / 3) {
+                      placement = isH ? 'right right-bottom' : 'bottom bottom-right';
+                  } else if (pageY < clientHeight * 2 / 3) {
+                      if (isV) {
+                          placement = pageY <= clientHeight / 2 ? 'bottom bottom-right' : 'top top-right';
+                      } else {
+                          placement = 'right';
+                      }
+                  } else {
+                      placement = isH ? 'right right-top' : 'top top-right';
+                  }
+                  //placement= pageY>targetHeight+arrowSize?'top-right':'bottom-right';
+              } else if (pageX < clientWidth * 2 / 3) {
+                  if (pageY < clientHeight / 3) {
+                      if (isH) {
+                          placement = pageX <= clientWidth / 2 ? 'right right-bottom' : 'left left-bottom';
+                      } else {
+                          placement = 'bottom';
+                      }
+                  } else if (pageY < clientHeight * 2 / 3) {
+                      if (isH) {
+                          placement = pageX <= clientWidth / 2 ? 'right' : 'left';
+                      } else {
+                          placement = pageY <= clientHeight / 2 ? 'bottom' : 'top';
+                      }
+                  } else {
+                      if (isH) {
+                          placement = pageX <= clientWidth / 2 ? 'right right-top' : 'left left-top';
+                      } else {
+                          placement = 'top';
+                      }
+                  }
+              } else {
+                  //placement = pageY>targetHeight+arrowSize?'top-left':'bottom-left';
+                  if (pageY < clientHeight / 3) {
+                      placement = isH ? 'left left-bottom' : 'bottom bottom-left';
+                  } else if (pageY < clientHeight * 2 / 3) {
+                      if (isV) {
+                          placement = pageY <= clientHeight / 2 ? 'bottom-left' : 'top-left';
+                      } else {
+                          placement = 'left';
+                      }
+                  } else {
+                      placement = isH ? 'left left-top' : 'top top-left';
+                  }
+              }
+          } else if (placement === 'auto-top') {
+              if (pageX < clientWidth / 3) {
+                  placement = 'top top-right';
+              } else if (pageX < clientWidth * 2 / 3) {
+                  placement = 'top';
+              } else {
+                  placement = 'top top-left';
+              }
+          } else if (placement === 'auto-bottom') {
+              if (pageX < clientWidth / 3) {
+                  placement = 'bottom bottom-right';
+              } else if (pageX < clientWidth * 2 / 3) {
+                  placement = 'bottom';
+              } else {
+                  placement = 'bottom bottom-left';
+              }
+          } else if (placement === 'auto-left') {
+              if (pageY < clientHeight / 3) {
+                  placement = 'left left-top';
+              } else if (pageY < clientHeight * 2 / 3) {
+                  placement = 'left';
+              } else {
+                  placement = 'left left-bottom';
+              }
+          } else if (placement === 'auto-right') {
+              if (pageY < clientHeight / 3) {
+                  placement = 'right right-top';
+              } else if (pageY < clientHeight * 2 / 3) {
+                  placement = 'right';
+              } else {
+                  placement = 'right right-bottom';
+              }
+          }
+          return placement;
+        },
+        getDialogPositin: function(elementPos, placement, targetWidth, targetHeight) {
+            var pos = elementPos,
+                de = document.documentElement,
+                db = document.body,
+                clientWidth = de.clientWidth,
+                clientHeight = de.clientHeight,
+                elementW = this.$target.outerWidth(),
+                elementH = this.$target.outerHeight(),
+                scrollTop = Math.max(db.scrollTop, de.scrollTop),
+                scrollLeft = Math.max(db.scrollLeft, de.scrollLeft),
+                position = {},
+                arrowOffset = null,
+                arrowSize = 20,
+                padding = 10,
+                fixedW = elementW < arrowSize + padding ? arrowSize : 0,
+                fixedH = elementH < arrowSize + padding ? arrowSize : 0,
+                refix = 0,
+                pageH = clientHeight + scrollTop,
+                pageW = clientWidth + scrollLeft;
+
+
+
+            var validLeft = pos.left + pos.width / 2 - fixedW > 0;
+            var validRight = pos.left + pos.width / 2 + fixedW < pageW;
+            var validTop = pos.top + pos.height / 2 - fixedH > 0;
+            var validBottom = pos.top + pos.height / 2 + fixedH < pageH;
+
             switch (placement) {
                 case 'bottom':
-                    position = {top: pos.top + pos.height, left: pos.left + pos.width / 2 - actualWidth / 2};
-                    break;
-                case 'bottom bottom-left':
-                    position = {top: pos.top + pos.height, left: pos.left};
-                    break;
-                case 'bottom bottom-right':
-                    position = {top: pos.top + pos.height, left: pos.left + pos.width - actualWidth};
+                    position = {
+                        top: pos.top + pos.height,
+                        left: pos.left + pos.width / 2 - targetWidth / 2
+                    };
                     break;
                 case 'top':
-                    position = {top: pos.top - actualHeight, left: pos.left + pos.width / 2 - actualWidth / 2};
-                    break;
-                case 'top top-left':
-                    position = {top: pos.top - actualHeight, left: pos.left};
-                    break;
-                case 'top top-right':
-                    position = {top: pos.top - actualHeight, left: pos.left + pos.width - actualWidth};
+                    position = {
+                        top: pos.top - targetHeight,
+                        left: pos.left + pos.width / 2 - targetWidth / 2
+                    };
                     break;
                 case 'left':
-                    position = {top: pos.top + pos.height / 2 - actualHeight / 2, left: pos.left - actualWidth};
-                    break;
-                case 'left left-top':
-                    position = {top: pos.top, left: pos.left - actualWidth};
-                    break;
-                case 'left left-bottom':
-                    position = {top: pos.top + pos.height - actualHeight, left: pos.left - actualWidth};
+                    position = {
+                        top: pos.top + pos.height / 2 - targetHeight / 2,
+                        left: pos.left - targetWidth
+                    };
                     break;
                 case 'right':
-                    position = {top: pos.top + pos.height / 2 - actualHeight / 2, left: pos.left + pos.width};
+                    position = {
+                        top: pos.top + pos.height / 2 - targetHeight / 2,
+                        left: pos.left + pos.width
+                    };
+                    break;
+                case 'top top-right':
+                    position = {
+                        top: pos.top - targetHeight,
+                        left: validLeft ? pos.left - fixedW : padding
+                    };
+                    arrowOffset = {
+                        left: validLeft ? Math.min(elementW, targetWidth) / 2 + fixedW : _offsetOut
+                    };
+                    console.log($(this)[0]);
+                    break;
+                case 'top top-left':
+                    refix = validRight ? fixedW : -padding;
+                    position = {
+                        top: pos.top - targetHeight,
+                        left: pos.left - targetWidth + pos.width + refix
+                    };
+                    arrowOffset = {
+                        left: validRight ? targetWidth - Math.min(elementW, targetWidth) / 2 - fixedW : _offsetOut
+                    };
+                    break;
+                case 'bottom bottom-right':
+                    position = {
+                        top: pos.top + pos.height,
+                        left: validLeft ? pos.left - fixedW : padding
+                    };
+                    arrowOffset = {
+                        left: validLeft ? Math.min(elementW, targetWidth) / 2 + fixedW : _offsetOut
+                    };
+                    break;
+                case 'bottom bottom-left':
+                    refix = validRight ? fixedW : -padding;
+                    position = {
+                        top: pos.top + pos.height,
+                        left: pos.left - targetWidth + pos.width + refix
+                    };
+                    arrowOffset = {
+                        left: validRight ? targetWidth - Math.min(elementW, targetWidth) / 2 - fixedW : _offsetOut
+                    };
                     break;
                 case 'right right-top':
-                    position = {top: pos.top, left: pos.left + pos.width};
+                    refix = validBottom ? fixedH : -padding;
+                    position = {
+                        top: pos.top - targetHeight + pos.height + refix,
+                        left: pos.left + pos.width
+                    };
+                    arrowOffset = {
+                        top: validBottom ? targetHeight - Math.min(elementH, targetHeight) / 2 - fixedH : _offsetOut
+                    };
                     break;
                 case 'right right-bottom':
-                    position = {top: pos.top + pos.height - actualHeight, left: pos.left + pos.width};
+                    position = {
+                        top: validTop ? pos.top - fixedH : padding,
+                        left: pos.left + pos.width
+                    };
+                    arrowOffset = {
+                        top: validTop ? Math.min(elementH, targetHeight) / 2 + fixedH : _offsetOut
+                    };
                     break;
-                default:
-                    throw "Invalid popover placement '" + placement + "'.";
+                case 'left left-top':
+                    refix = validBottom ? fixedH : -padding;
+                    position = {
+                        top: pos.top - targetHeight + pos.height + refix,
+                        left: pos.left - targetWidth
+                    };
+                    arrowOffset = {
+                        top: validBottom ? targetHeight - Math.min(elementH, targetHeight) / 2 - fixedH : _offsetOut
+                    };
+                    break;
+                case 'left left-bottom':
+                    position = {
+                        top: validTop ? pos.top - fixedH : padding,
+                        left: pos.left - targetWidth
+                    };
+                    arrowOffset = {
+                        top: validTop ? Math.min(elementH, targetHeight) / 2 + fixedH : _offsetOut
+                    };
+                    break;
+
             }
-            $dialog.css(position);
+
+            return {
+                position: position,
+                arrowOffset: arrowOffset
+            };
+        },
+        refreshPosition: function () {
+            var self = this,
+                $dialog = self.$element,
+                actualWidth = $dialog[0].offsetWidth,
+                actualHeight = $dialog[0].offsetHeight,
+                position,
+                pos = self.getPosition();
+            var placement = self.getPlacement(pos);
+            var postionInfo = self.getDialogPositin(pos, placement, actualWidth, actualHeight);
+                      // console.log(dialogPosition.position);
+
+            $dialog.css(postionInfo.position);
             addCss($dialog, placement + ' in');
+
+            var $arrow = $dialog.find('.arrow');
+            if ($arrow.length) {
+                var $arrow = $dialog.find('.arrow');
+                $arrow.removeAttr('style');
+                console.log(postionInfo.arrowOffset);
+                //prevent arrow change by content size
+                if (placement === 'left' || placement === 'right') {
+                    $arrow.css({
+                        top: $dialog.height() / 2
+                    });
+                } else if (placement === 'top' || placement === 'bottom') {
+                    $arrow.css({
+                        left: $dialog.width() / 2
+                    });
+                }
+
+                if (postionInfo.arrowOffset) {
+                    //hide the arrow if offset is negative
+                    if (postionInfo.arrowOffset.left === -1 || postionInfo.arrowOffset.top === -1) {
+                        $arrow.hide();
+                    } else {
+                        $arrow.css(postionInfo.arrowOffset);
+                    }
+                }
+
+            }
         },
         show: function () {
             var self = this, $dialog = self.$element;
@@ -131,11 +360,12 @@
     };
 
     $.fn.popoverX.defaults = $.extend({}, $.fn.modal.defaults, {
-        placement: 'right',
+        placement: 'auto',
         keyboard: true,
+        arrow: true,
         closeOtherPopovers: true
     });
-    
+
     $.fn.popoverX.Constructor = PopoverX;
 
     $(document).ready(function () {
